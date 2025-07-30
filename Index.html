@@ -235,6 +235,24 @@
     <label for="branchTension">Branch Tension (live):</label>
     <input type="number" id="branchTension" step="0.1" min="0" max="1" value="0.5">
     <br>
+<div class="branch-controls">
+  <label for="endcapFileInput">Load Endcap Mesh (.glb):</label>
+  <input type="file" id="endcapFileInput" accept=".glb" />
+  <button id="applyEndcapsBtn">Apply to Open Ends</button>
+</div>
+<div class="branch-controls">
+  <label><strong>Endcap Adjustments:</strong></label>
+  <label>Scale:</label>
+  <input type="number" id="capScale" step="0.1" value="1" />
+  <label>Rotation (deg):</label>
+  <input type="number" id="capRotation" step="1" value="0" />
+  <label>X Offset:</label>
+  <input type="number" id="capOffsetX" step="0.1" value="0" />
+  <label>Y Offset:</label>
+  <input type="number" id="capOffsetY" step="0.1" value="0" />
+  <label>Z Offset:</label>
+  <input type="number" id="capOffsetZ" step="0.1" value="0" />
+</div>
     <input type="checkbox" id="wireframe"> Wireframe Mode
     <p>Click a red sphere to select a control point (turns green).</p>
     <p><strong>Cross-Section:</strong> Use the editor to modify tube shape.</p>
@@ -286,7 +304,35 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { DragControls } from 'three/addons/controls/DragControls.js';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+let endcapMesh = null;
+document.getElementById('endcapFileInput').addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const loader = new GLTFLoader();
+    loader.parse(e.target.result, '', (gltf) => {
+      endcapMesh = gltf.scene;
+      alert('Endcap mesh loaded!');
+    }, console.error);
+  };
+  reader.readAsArrayBuffer(file);
+});
+document.getElementById('endcapFileInput').addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const loader = new GLTFLoader();
+    loader.parse(e.target.result, '', (gltf) => {
+      endcapMesh = gltf.scene;
+      alert('Endcap mesh loaded!');
+    }, console.error);
+  };
+  reader.readAsArrayBuffer(file);
+});
     // Scene setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -901,20 +947,20 @@ arch: [
     scene.add(branch.line);
     }
 
-    // Function to rebuild caps
-    function rebuildCaps() {
-    caps.forEach(c => scene.remove(c));
-    caps = [];
-    const pointCounts = new Map();
+    // Function to rebuild caps with optional custom GLB mesh
+function rebuildCaps() {
+  caps.forEach(c => scene.remove(c));
+  caps = [];
+  const pointCounts = new Map();
 
-    for (let branch of branches) {
+  for (let branch of branches) {
     const startKey = `${branch.points[0].x.toFixed(6)},${branch.points[0].y.toFixed(6)},${branch.points[0].z.toFixed(6)}`;
     const endKey = `${branch.points[branch.points.length - 1].x.toFixed(6)},${branch.points[branch.points.length - 1].y.toFixed(6)},${branch.points[branch.points.length - 1].z.toFixed(6)}`;
     pointCounts.set(startKey, (pointCounts.get(startKey) || 0) + 1);
     pointCounts.set(endKey, (pointCounts.get(endKey) || 0) + 1);
-    }
+  }
 
-    for (let branch of branches) {
+  for (let branch of branches) {
     const curve = new THREE.CatmullRomCurve3(branch.points, false, 'catmullrom', branch.tension);
     const startPoint = branch.points[0];
     const endPoint = branch.points[branch.points.length - 1];
@@ -922,28 +968,50 @@ arch: [
     const endKey = `${endPoint.x.toFixed(6)},${endPoint.y.toFixed(6)},${endPoint.z.toFixed(6)}`;
 
     if (pointCounts.get(startKey) === 1) {
-    let tangent = curve.getTangent(0).normalize();
-    const radius = getRadiusAt(branch, 0);
-    const circleGeo = new THREE.CircleGeometry(radius, 20);
-    const startCap = new THREE.Mesh(circleGeo, wallMaterial);
-    startCap.position.copy(startPoint);
-    startCap.lookAt(startPoint.clone().sub(tangent));
-    scene.add(startCap);
-    caps.push(startCap);
+      let tangent = curve.getTangent(0).normalize();
+
+      if (endcapMesh) {
+  const cap = endcapMesh.clone();
+  cap.position.copy(startPoint);
+  cap.lookAt(startPoint.clone().sub(tangent));
+
+  // Apply cap adjustments
+  const scale = parseFloat(document.getElementById('capScale').value) || 1;
+  const rot = THREE.MathUtils.degToRad(parseFloat(document.getElementById('capRotation').value) || 0);
+  const offsetX = parseFloat(document.getElementById('capOffsetX').value) || 0;
+  const offsetY = parseFloat(document.getElementById('capOffsetY').value) || 0;
+  const offsetZ = parseFloat(document.getElementById('capOffsetZ').value) || 0;
+
+  cap.scale.setScalar(scale);
+  cap.rotateZ(rot);
+  cap.position.add(new THREE.Vector3(offsetX, offsetY, offsetZ));
+
+  scene.add(cap);
+  caps.push(cap);
+}
     }
 
     if (pointCounts.get(endKey) === 1) {
-    let tangent = curve.getTangent(1).normalize();
-    const radius = getRadiusAt(branch, 1);
-    const circleGeo = new THREE.CircleGeometry(radius, 20);
-    const endCap = new THREE.Mesh(circleGeo, wallMaterial);
-    endCap.position.copy(endPoint);
-    endCap.lookAt(endPoint.clone().add(tangent));
-    scene.add(endCap);
-    caps.push(endCap);
+      let tangent = curve.getTangent(1).normalize();
+
+      if (endcapMesh) {
+        const cap = endcapMesh.clone();
+        cap.position.copy(endPoint);
+        cap.lookAt(endPoint.clone().add(tangent));
+        scene.add(cap);
+        caps.push(cap);
+      } else {
+        const radius = getRadiusAt(branch, 1);
+        const circleGeo = new THREE.CircleGeometry(radius, 20);
+        const endCap = new THREE.Mesh(circleGeo, wallMaterial);
+        endCap.position.copy(endPoint);
+        endCap.lookAt(endPoint.clone().add(tangent));
+        scene.add(endCap);
+        caps.push(endCap);
+      }
     }
-    }
-    }
+  }
+}
 
     // Function to generate bilateral branches from a point
     function generateBilateralBranches(startPoint, startTangent, numBranches, numSubBranches, bilateral = true, parentBranchIndex = null, parentNodeIndex = null) {
