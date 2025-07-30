@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Cave System with Cross-Section Editor</title>
+    <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    canvas { display: block; }
+
+    #controls {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    user-select: none;
+    z-index: 10;
+    max-width: 220px;
+    }
+
+    #crossSectionEditor {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #0284c7;
+    z-index: 15;
+    width: 350px;
+    max-height: 80vh;
+    overflow-y: auto;
+    }
+
+    #crossSectionEditor h3 {
+    margin: 0 0 10px 0;
+    color: #0284c7;
+    font-size: 16px;
+    }
+
+    .shape-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+    }
+
+    .shape-btn {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    text-transform: capitalize;
+    }
+
+    .shape-btn.active {
+    background: #0284c7;
+    color: white;
+    }
+
+    .shape-btn:hover {
+    background: #f0f9ff;
+    }
+
+    .shape-btn.active:hover {
+    background: #0369a1;
+    }
+
+    .shape-btn.custom {
+    background: #f59e0b;
+    color: white;
+    }
+
+    #shapeCanvas {
+    border: 2px solid #0284c7;
+    border-radius: 4px;
+    background: white;
+    cursor: crosshair;
+    margin: 10px 0;
+    }
+
+    .editor-controls {
+    display: flex;
+    gap: 5px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+    }
+
+    .editor-controls button {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    }
+
+    .editor-controls button:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+    }
+
+    .editor-controls button.primary {
+    background: #0284c7;
+    color: white;
+    border-color: #0284c7;
+    }
+
+    .editor-controls button.danger {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+    }
+
+    .editor-controls button.success {
+    background: #16a34a;
+    color: white;
+    border-color: #16a34a;
+    }
+
+    .save-load-controls {
+    display: flex;
+    gap: 3px;
+    margin: 5px 0;
+    flex-wrap: wrap;
+    }
+
+    .save-load-controls button {
+    padding: 3px 6px;
+    font-size: 10px;
+    }
+
+    .save-load-controls input {
+    padding: 2px 4px;
+    font-size: 10px;
+    width: 80px;
+    }
+
+    #customTexture, #nodeRadius, #branchTension, #numBranches, #numSubBranches, #branchDistance, #branchDistanceVariability {
+    width: 200px;
+    margin-top: 5px;
+    }
+
+    button {
+    margin-top: 5px;
+    width: 100%;
+    }
+
+    label {
+    margin-top: 5px;
+    display: block;
+    }
+
+    input[type=number] {
+    margin-top: 3px;
+    }
+
+    .branch-controls {
+    border: 1px solid #ccc;
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 3px;
+    background: rgba(240, 240, 240, 0.5);
+    }
+
+    p {
+    margin-top: 7px;
+    font-size: 12px;
+    color: #444;
+    }
+
+    .hidden {
+    display: none !important;
+    }
+
+    .saved-shapes {
+    margin: 5px 0;
+    font-size: 10px;
+    }
+
+    .saved-shape-item {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin: 2px 0;
+    }
+
+    .saved-shape-item button {
+    padding: 2px 4px;
+    font-size: 9px;
+    margin: 0;
+    width: auto;
+    }
+    </style>
+</head>
+<body>
+    <div id="controls">
+    <button id="toggleEditor">Toggle Cross-Section Editor</button>
+    <br>
+    <div class="branch-controls">
+    <label for="numBranches">Number of Main Branches:</label>
+    <input type="number" id="numBranches" min="1" max="10" value="3">
+    <br>
+    <label for="numSubBranches">Sub-branches per Main Branch:</label>
+    <input type="number" id="numSubBranches" min="0" max="5" value="2">
+    <br>
+    <input type="checkbox" id="bilateralBranching" checked> Bilateral Branching
+    </div>
+    <br>
+    <div class="branch-controls">
+    <label for="branchDistance">Branch Distance:</label>
+    <input type="number" id="branchDistance" step="0.1" min="0.5" max="10" value="3.0">
+    <br>
+    <label for="branchDistanceVariability">Distance Variability:</label>
+    <input type="number" id="branchDistanceVariability" step="0.1" min="0" max="2" value="0.5">
+    <br>
+    <input type="checkbox" id="randomizeBranchDistance" checked> Randomize Branch Distance
+    </div>
+    <button id="randomBtn">Generate Cave System</button>
+    <button id="addPointBtn">Add Point After Selected</button>
+    <button id="addBranchBtn">Add Branch from Selected</button>
+    <button id="flattenBtn">Flatten to Horizontal Plane</button>
+    <button id="alignRightAnglesBtn">Align to Right Angles</button>
+    <button id="realignBranchNodesBtn">Re-align Branch Nodes</button>
+    <button id="exportBtn">Export to GLB</button>
+    <br>
+    <label for="nodeRadius">Node Radius (live):</label>
+    <input type="number" id="nodeRadius" step="0.1" min="0.1" value="0.5">
+    <br>
+    <label for="branchTension">Branch Tension (live):</label>
+    <input type="number" id="branchTension" step="0.1" min="0" max="1" value="0.5">
+    <br>
+    <input type="checkbox" id="wireframe"> Wireframe Mode
+    <p>Click a red sphere to select a control point (turns green).</p>
+    <p><strong>Cross-Section:</strong> Use the editor to modify tube shape.</p>
+    </div>
+
+    <div id="crossSectionEditor" class="hidden">
+    <h3>Tube Cross-Section Editor</h3>
+
+    <div class="shape-buttons" id="shapeButtons">
+    <!-- Shape buttons will be populated by JavaScript -->
+    </div>
+
+    <canvas id="shapeCanvas" width="320" height="240"></canvas>
+
+    <div class="editor-controls">
+    <button id="addPointBtn2" class="primary">Add Point</button>
+    <button id="removePointBtn" class="danger">Remove Point</button>
+    <button id="applyShapeBtn" class="success">Apply to Cave</button>
+    </div>
+
+    <div class="save-load-controls">
+    <input type="text" id="saveNameInput" placeholder="Shape name">
+    <button id="saveShapeBtn" class="primary">Save</button>
+    <button id="exportShapeBtn">Export</button>
+    <input type="file" id="importShapeInput" accept=".json" style="display:none">
+    <button id="importShapeBtn">Import</button>
+    </div>
+
+    <div id="savedShapes" class="saved-shapes">
+    <!-- Saved shapes will be populated here -->
+    </div>
+
+    <div style="font-size: 11px; color: #666; margin-top: 8px;">
+    Drag points to customize shape. Click edges to add points. Select a point first to add/remove.
+    </div>
+    </div>
+
+    <script type="importmap">
+    {
+    "imports": {
+    "three": "https://unpkg.com/three@0.168.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.168.0/examples/jsm/"
+    }
+    }
+    </script>
+
+    <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { DragControls } from 'three/addons/controls/DragControls.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x202020);
+    document.body.appendChild(renderer.domElement);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(5, 5, 5);
+    scene.add(directionalLight);
+
+    // Controls
+    const orbitControls = new OrbitControls(camera, renderer.domElement);
+    camera.position.set(0, 0, 20);
+
+    // Materials
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, side: THREE.DoubleSide });
+    const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x696969, side: THREE.DoubleSide });
+    const roofMaterial = new THREE.MeshStandardMaterial({ color: 0x2F4F4F, side: THREE.DoubleSide });
+
+    // Cross-section editor variables
+    let crossSectionPoints = [
+    { x: 100, y: 60 },
+    { x: 220, y: 60 },
+    { x: 220, y: 180 },
+    { x: 100, y: 180 }
+    ];
+    let selectedPointIndex = null;
+    let dragIndex = null;
+    let currentShape = 'box';
+    let savedShapes = {};
+
+    // Load saved shapes from localStorage
+    function loadSavedShapes() {
+    const saved = localStorage.getItem('caveCrossSectionShapes');
+    if (saved) {
+    try {
+    savedShapes = JSON.parse(saved);
+    updateSavedShapesUI();
+    } catch (e) {
+    console.error('Failed to load saved shapes:', e);
+    savedShapes = {};
+    }
+    }
+    }
+
+    // Save shapes to localStorage
+    function saveSavedShapes() {
+    localStorage.setItem('caveCrossSectionShapes', JSON.stringify(savedShapes));
+    }
+
+    // Update saved shapes UI
+    function updateSavedShapesUI() {
+    const container = document.getElementById('savedShapes');
+    container.innerHTML = '';
+
+    if (Object.keys(savedShapes).length > 0) {
+    const title = document.createElement('div');
+    title.textContent = 'Saved Shapes:';
+    title.style.fontWeight = 'bold';
+    title.style.marginBottom = '3px';
+    container.appendChild(title);
+
+    Object.keys(savedShapes).forEach(shapeName => {
+    const item = document.createElement('div');
+    item.className = 'saved-shape-item';
+
+    const loadBtn = document.createElement('button');
+    loadBtn.textContent = shapeName;
+    loadBtn.className = currentShape === shapeName ? 'shape-btn active' : 'shape-btn';
+    loadBtn.addEventListener('click', () => loadShape(shapeName));
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.className = 'danger';
+    deleteBtn.title = 'Delete shape';
+    deleteBtn.addEventListener('click', () => deleteShape(shapeName));
+
+    item.appendChild(loadBtn);
+    item.appendChild(deleteBtn);
+    container.appendChild(item);
+    });
+    }
+    }
+
+    // Predefined shapes for cross-section
+    const SHAPES = {
+    box: [
+    { x: 100, y: 60 },
+    { x: 220, y: 60 },
+    { x: 220, y: 180 },
+    { x: 100, y: 180 }
+    ],
+    circle: (() => {
+    const points = [];
+    const centerX = 160, centerY = 120, radius = 60;
+    for (let i = 0; i < 16; i++) {
+    const angle = (i / 16) * 2 * Math.PI;
+    points.push({
+    x: centerX + radius * Math.cos(angle),
+    y: centerY + radius * Math.sin(angle)
+    });
+    }
+    return points;
+    })(),
+    tunnel: [
+    { x: 80, y: 60 },
+    { x: 80, y: 120 },
+    { x: 90, y: 150 },
+    { x: 110, y: 170 },
+    { x: 140, y: 180 },
+    { x: 180, y: 180 },
+    { x: 210, y: 170 },
+    { x: 230, y: 150 },
+    { x: 240, y: 120 },
+    { x: 240, y: 60 },
+    ],
+    arch: [
+    { x: 90, y: 60 },
+    { x: 90, y: 100 },
+    { x: 100, y: 120 },
+    { x: 120, y: 150 },
+    { x: 140, y: 165 },
+    { x: 160, y: 170 },
+    { x: 180, y: 165 },
+    { x: 200, y: 150 },
+    { x: 220, y: 120 },
+    { x: 230, y: 100 },
+    { x: 230, y: 60 },
+    ],
+    oval: (() => {
+    const points = [];
+    const centerX = 160, centerY = 120, radiusX = 80, radiusY = 50;
+    for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * 2 * Math.PI;
+    points.push({
+    x: centerX + radiusX * Math.cos(angle),
+    y: centerY + radiusY * Math.sin(angle)
+    });
+    }
+    return points;
+    })()
+    };
+
+    // Cave system variables
+    let branches = [];
+    let caps = [];
+    let selectedSphere = null;
+    let selectedBranchIndex = -1;
+    let selectedPointIndex3D = -1;
+
+    const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false });
+    const selectedSphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, depthTest: false });
+
+    // Raycaster for selection
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // Cross-section editor setup
+    const canvas = document.getElementById('shapeCanvas');
+    const ctx = canvas.getContext('2d');
+    const shapeButtonsContainer = document.getElementById('shapeButtons');
+
+    // Create shape buttons
+    Object.keys(SHAPES).forEach(shapeName => {
+    const button = document.createElement('button');
+    button.textContent = shapeName;
+    button.className = 'shape-btn';
+    if (shapeName === currentShape) button.classList.add('active');
+    button.addEventListener('click', () => loadShape(shapeName));
+    shapeButtonsContainer.appendChild(button);
+    });
+
+    // Cross-section editor functions
+    function loadShape(shapeName) {
+    if (SHAPES[shapeName]) {
+    crossSectionPoints = [...SHAPES[shapeName]];
+    currentShape = shapeName;
+    } else if (savedShapes[shapeName]) {
+    crossSectionPoints = [...savedShapes[shapeName]];
+    currentShape = shapeName;
+    }
+    selectedPointIndex = null;
+    updateShapeButtons();
+    updateSavedShapesUI();
+    drawCrossSection();
+    }
+
+    function updateShapeButtons() {
+    const existingCustomBtn = shapeButtonsContainer.querySelector('.shape-btn.custom');
+    if (existingCustomBtn) {
+    existingCustomBtn.remove();
+    }
+
+    document.querySelectorAll('.shape-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.textContent === currentShape) {
+    btn.classList.add('active');
+    }
+    });
+
+    if (currentShape === 'custom') {
+    const customBtn = document.createElement('button');
+    customBtn.textContent = 'custom';
+    customBtn.className = 'shape-btn custom active';
+    customBtn.addEventListener('click', () => {
+    currentShape = 'custom';
+    updateShapeButtons();
+    });
+    shapeButtonsContainer.appendChild(customBtn);
+    }
+    }
+
+    function drawCrossSection() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#e0f2fe';
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    crossSectionPoints.forEach((point, i) => {
+    if (i === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
+    });
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.lineWidth = 3;
+    crossSectionPoints.forEach((point, i) => {
+    const nextPoint = crossSectionPoints[(i + 1) % crossSectionPoints.length];
+    ctx.strokeStyle = selectedPointIndex === i ? '#f59e42' : '#94a3b8';
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y);
+    ctx.lineTo(nextPoint.x, nextPoint.y);
+    ctx.stroke();
+    });
+
+    ctx.globalAlpha = 1;
+    crossSectionPoints.forEach((point, i) => {
+    ctx.fillStyle = selectedPointIndex === i ? '#f59e42' : '#0284c7';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    const radius = selectedPointIndex === i ? 9 : 7;
+
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.stroke();
+    });
+    }
+
+    // Cross-section editor event handlers
+    canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    for (let i = 0; i < crossSectionPoints.length; i++) {
+    const point = crossSectionPoints[i];
+    const distance = Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2);
+    if (distance <= 10) {
+    selectedPointIndex = i;
+    dragIndex = i;
+    drawCrossSection();
+    return;
+    }
+    }
+
+    for (let i = 0; i < crossSectionPoints.length; i++) {
+    const point1 = crossSectionPoints[i];
+    const point2 = crossSectionPoints[(i + 1) % crossSectionPoints.length];
+
+    const A = y - point1.y;
+    const B = point1.x - x;
+    const C = (x - point1.x) * (point2.y - point1.y) - (y - point1.y) * (point2.x - point1.x);
+    const distance = Math.abs(C) / Math.sqrt(A * A + B * B);
+
+    if (distance <= 5) {
+    selectedPointIndex = i;
+    drawCrossSection();
+    return;
+    }
+    }
+
+    selectedPointIndex = null;
+    drawCrossSection();
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+    if (dragIndex === null) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    crossSectionPoints[dragIndex] = { x, y };
+    currentShape = 'custom';
+    updateShapeButtons();
+    drawCrossSection();
+    });
+
+    canvas.addEventListener('mouseup', () => {
+    dragIndex = null;
+    });
+
+    // Cross-section save/load functions
+    function saveShape() {
+    const name = document.getElementById('saveNameInput').value.trim();
+    if (!name) {
+    alert('Please enter a shape name');
+    return;
+    }
+
+    savedShapes[name] = [...crossSectionPoints];
+    currentShape = name;
+    saveSavedShapes();
+    updateSavedShapesUI();
+    updateShapeButtons();
+    document.getElementById('saveNameInput').value = '';
+    }
+
+    function deleteShape(shapeName) {
+    if (confirm(`Delete shape "${shapeName}"?`)) {
+    delete savedShapes[shapeName];
+    saveSavedShapes();
+    updateSavedShapesUI();
+    if (currentShape === shapeName) {
+    loadShape('box');
+    }
+    }
+    }
+
+    function exportShape() {
+    const data = {
+    name: currentShape,
+    points: crossSectionPoints,
+    timestamp: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentShape}_crosssection.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    }
+
+    function importShape(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+    try {
+    const data = JSON.parse(e.target.result);
+    if (data.points && Array.isArray(data.points)) {
+    crossSectionPoints = data.points;
+    currentShape = data.name || 'imported';
+    selectedPointIndex = null;
+    updateShapeButtons();
+    drawCrossSection();
+    } else {
+    alert('Invalid shape file format');
+    }
+    } catch (error) {
+    alert('Failed to import shape: ' + error.message);
+    }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+    }
+
+    // Cross-section editor controls
+    document.getElementById('addPointBtn2').addEventListener('click', () => {
+    if (selectedPointIndex === null) return;
+
+    const nextIndex = (selectedPointIndex + 1) % crossSectionPoints.length;
+    const point1 = crossSectionPoints[selectedPointIndex];
+    const point2 = crossSectionPoints[nextIndex];
+    const midPoint = {
+    x: (point1.x + point2.x) / 2,
+    y: (point1.y + point2.y) / 2
+    };
+
+    crossSectionPoints.splice(nextIndex, 0, midPoint);
+    selectedPointIndex = nextIndex;
+    currentShape = 'custom';
+    updateShapeButtons();
+    drawCrossSection();
+    });
+
+    document.getElementById('removePointBtn').addEventListener('click', () => {
+    if (selectedPointIndex === null || crossSectionPoints.length <= 3) return;
+
+    crossSectionPoints.splice(selectedPointIndex, 1);
+    selectedPointIndex = null;
+    currentShape = 'custom';
+    updateShapeButtons();
+    drawCrossSection();
+    });
+
+    // Save/load/export/import controls
+    document.getElementById('saveShapeBtn').addEventListener('click', saveShape);
+    document.getElementById('exportShapeBtn').addEventListener('click', exportShape);
+    document.getElementById('importShapeBtn').addEventListener('click', () => {
+    document.getElementById('importShapeInput').click();
+    });
+    document.getElementById('importShapeInput').addEventListener('change', importShape);
+
+    // Convert 2D cross-section to 3D shape data
+    function convertCrossSectionTo3D() {
+    const centerX = crossSectionPoints.reduce((sum, p) => sum + p.x, 0) / crossSectionPoints.length;
+    const centerY = crossSectionPoints.reduce((sum, p) => sum + p.y, 0) / crossSectionPoints.length;
+
+    const normalizedPoints = crossSectionPoints.map(p => ({
+    x: (p.x - centerX) / 100,
+    y: -(p.y - centerY) / 100
+    }));
+
+    return normalizedPoints;
+    }
+
+    // Apply cross-section to cave system
+    document.getElementById('applyShapeBtn').addEventListener('click', () => {
+    const shapeData = convertCrossSectionTo3D();
+
+    branches.forEach((branch, index) => {
+    branch.crossSection = shapeData;
+    updateBranch(index);
+    });
+
+    rebuildCaps();
+    alert('Cross-section applied to all cave tunnels!');
+    });
+
+    // Toggle editor visibility
+    document.getElementById('toggleEditor').addEventListener('click', () => {
+    const editor = document.getElementById('crossSectionEditor');
+    editor.classList.toggle('hidden');
+    });
+
+    // 1D Catmull-Rom interpolation for smooth radius
+    function catmullRomInterp(t, p0, p1, p2, p3) {
+    const v0 = (p2 - p0) * 0.5;
+    const v1 = (p3 - p1) * 0.5;
+    const t2 = t * t;
+    const t3 = t * t2;
+    return (2 * p1 - 2 * p2 + v0 + v1) * t3 + (-3 * p1 + 3 * p2 - 2 * v0 - v1) * t2 + v0 * t + p1;
+    }
+
+    // Function to get radius at t with smooth interpolation
+    function getRadiusAt(branch, t) {
+    const len = branch.points.length - 1;
+    if (len === 0) return branch.radii[0] || 0.5;
+    const idx = t * len;
+    const floorIndex = Math.floor(idx);
+    const frac = idx - floorIndex;
+    const p0 = branch.radii[Math.max(floorIndex - 1, 0)];
+    const p1 = branch.radii[floorIndex];
+    const p2 = branch.radii[Math.min(floorIndex + 1, len)];
+    const p3 = branch.radii[Math.min(floorIndex + 2, len)];
+    return catmullRomInterp(frac, p0, p1, p2, p3);
+    }
+
+    // Function to create a custom tube mesh with variable radius and custom cross-section
+    function createTubeMesh(branch) {
+    const curve = new THREE.CatmullRomCurve3(branch.points, false, 'catmullrom', branch.tension);
+    const numSegments = 100;
+    const pathPoints = curve.getPoints(numSegments);
+    const tangents = [];
+
+    for (let i = 0; i <= numSegments; i++) {
+    tangents.push(curve.getTangent(i / numSegments).normalize());
+    }
+
+    const crossSection = branch.crossSection || [
+    { x: 1, y: 0 }, { x: 0.7, y: 0.7 }, { x: 0, y: 1 }, { x: -0.7, y: 0.7 },
+    { x: -1, y: 0 }, { x: -0.7, y: -0.7 }, { x: 0, y: -1 }, { x: 0.7, y: -0.7 }
+    ];
+
+    const numRadial = crossSection.length;
+
+    let normals = new Array(numSegments + 1);
+    let binormals = new Array(numSegments + 1);
+
+    normals[0] = new THREE.Vector3(0, 1, 0).cross(tangents[0]).normalize();
+    if (normals[0].lengthSq() === 0) normals[0] = new THREE.Vector3(1, 0, 0).cross(tangents[0]).normalize();
+    binormals[0] = tangents[0].clone().cross(normals[0]).normalize();
+
+    for (let i = 1; i <= numSegments; i++) {
+    const cross = tangents[i - 1].clone().cross(tangents[i]);
+    if (cross.lengthSq() < 1e-8) {
+    normals[i] = normals[i - 1].clone();
+    } else {
+    const v = cross.normalize();
+    const theta = Math.acos(THREE.MathUtils.clamp(tangents[i - 1].dot(tangents[i]), -1, 1));
+    normals[i] = normals[i - 1].clone().applyAxisAngle(v, theta);
+    }
+    binormals[i] = tangents[i].clone().cross(normals[i]).normalize();
+    }
+
+    const vertices = [];
+    const indices = [];
+    const uvs = [];
+
+    for (let i = 0; i <= numSegments; i++) {
+    const radius = getRadiusAt(branch, i / numSegments);
+    for (let j = 0; j < numRadial; j++) {
+    const crossPoint = crossSection[j];
+    const localX = crossPoint.x * radius;
+    const localY = crossPoint.y * radius;
+
+    const normal = normals[i].clone().multiplyScalar(localX).add(binormals[i].clone().multiplyScalar(localY));
+    const vertex = pathPoints[i].clone().add(normal);
+    vertices.push(vertex.x, vertex.y, vertex.z);
+    uvs.push(j / numRadial, i / numSegments);
+    }
+    }
+
+    for (let i = 0; i < numSegments; i++) {
+    for (let j = 0; j < numRadial; j++) {
+    const a = i * numRadial + j;
+    const b = i * numRadial + (j + 1) % numRadial;
+    const c = (i + 1) * numRadial + (j + 1) % numRadial;
+    const d = (i + 1) * numRadial + j;
+    indices.push(a, b, d);
+    indices.push(b, c, d);
+    }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+
+    let startIndex = 0;
+    for (let i = 0; i < numSegments; i++) {
+    for (let j = 0; j < numRadial; j++) {
+    const crossPoint1 = crossSection[j];
+    const crossPoint2 = crossSection[(j + 1) % numRadial];
+
+    const avgY = (crossPoint1.y + crossPoint2.y) / 2;
+    let materialIndex;
+    if (avgY < -0.3) {
+    materialIndex = 0; // floor
+    } else if (avgY > 0.3) {
+    materialIndex = 2; // roof
+    } else {
+    materialIndex = 1; // wall
+    }
+    geometry.addGroup(startIndex, 6, materialIndex);
+    startIndex += 6;
+    }
+    }
+
+    geometry.computeVertexNormals();
+    return new THREE.Mesh(geometry, [floorMaterial, wallMaterial, roofMaterial]);
+    }
+
+    // Function to create spline line
+    function createSplineLine(branch) {
+    const curve = new THREE.CatmullRomCurve3(branch.points, false, 'catmullrom', branch.tension);
+    const points = curve.getPoints(50);
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    return new THREE.Line(lineGeo, lineMat);
+    }
+
+    // Function to add a branch
+    function addBranch(points, randomize = true) {
+    const radii = new Array(points.length).fill(0.5);
+    if (randomize) {
+    for (let i = 0; i < radii.length; i++) {
+    radii[i] += (Math.random() - 0.5) * 0.4;
+    radii[i] = Math.max(0.1, radii[i]);
+    }
+    }
+    const tension = 0.5 + (Math.random() - 0.5) * 0.2;
+    const crossSection = convertCrossSectionTo3D();
+    const mesh = createTubeMesh({points, radii, tension, crossSection});
+    const line = createSplineLine({points, tension});
+    const sphereGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const spheres = points.map(p => {
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
+    sphere.position.copy(p);
+    scene.add(sphere);
+    return sphere;
+    });
+    scene.add(mesh);
+    scene.add(line);
+    
+    // Store parent branch info for re-alignment
+    const branch = {points, radii, tension, crossSection, mesh, spheres, line, parentBranch: null, parentNodeIndex: null};
+    return branch;
+    }
+
+    // Update a specific branch
+    function updateBranch(index) {
+    const branch = branches[index];
+    scene.remove(branch.mesh);
+    scene.remove(branch.line);
+    branch.mesh = createTubeMesh(branch);
+    branch.line = createSplineLine(branch);
+    scene.add(branch.mesh);
+    scene.add(branch.line);
+    }
+
+    // Function to rebuild caps
+    function rebuildCaps() {
+    caps.forEach(c => scene.remove(c));
+    caps = [];
+    const pointCounts = new Map();
+
+    for (let branch of branches) {
+    const startKey = `${branch.points[0].x.toFixed(6)},${branch.points[0].y.toFixed(6)},${branch.points[0].z.toFixed(6)}`;
+    const endKey = `${branch.points[branch.points.length - 1].x.toFixed(6)},${branch.points[branch.points.length - 1].y.toFixed(6)},${branch.points[branch.points.length - 1].z.toFixed(6)}`;
+    pointCounts.set(startKey, (pointCounts.get(startKey) || 0) + 1);
+    pointCounts.set(endKey, (pointCounts.get(endKey) || 0) + 1);
+    }
+
+    for (let branch of branches) {
+    const curve = new THREE.CatmullRomCurve3(branch.points, false, 'catmullrom', branch.tension);
+    const startPoint = branch.points[0];
+    const endPoint = branch.points[branch.points.length - 1];
+    const startKey = `${startPoint.x.toFixed(6)},${startPoint.y.toFixed(6)},${startPoint.z.toFixed(6)}`;
+    const endKey = `${endPoint.x.toFixed(6)},${endPoint.y.toFixed(6)},${endPoint.z.toFixed(6)}`;
+
+    if (pointCounts.get(startKey) === 1) {
+    let tangent = curve.getTangent(0).normalize();
+    const radius = getRadiusAt(branch, 0);
+    const circleGeo = new THREE.CircleGeometry(radius, 20);
+    const startCap = new THREE.Mesh(circleGeo, wallMaterial);
+    startCap.position.copy(startPoint);
+    startCap.lookAt(startPoint.clone().sub(tangent));
+    scene.add(startCap);
+    caps.push(startCap);
+    }
+
+    if (pointCounts.get(endKey) === 1) {
+    let tangent = curve.getTangent(1).normalize();
+    const radius = getRadiusAt(branch, 1);
+    const circleGeo = new THREE.CircleGeometry(radius, 20);
+    const endCap = new THREE.Mesh(circleGeo, wallMaterial);
+    endCap.position.copy(endPoint);
+    endCap.lookAt(endPoint.clone().add(tangent));
+    scene.add(endCap);
+    caps.push(endCap);
+    }
+    }
+    }
+
+    // Function to generate bilateral branches from a point
+    function generateBilateralBranches(startPoint, startTangent, numBranches, numSubBranches, bilateral = true, parentBranchIndex = null, parentNodeIndex = null) {
+    const generatedBranches = [];
+    const up = new THREE.Vector3(0, 1, 0);
+    let perpendicular = startTangent.clone().cross(up).normalize();
+    if (perpendicular.lengthSq() === 0) {
+    perpendicular = new THREE.Vector3(1, 0, 0).cross(startTangent).normalize();
+    }
+
+    const sides = bilateral ? [-1, 1] : [1];
+
+    const baseBranchDistance = parseFloat(document.getElementById('branchDistance').value) || 3.0;
+    const distanceVariability = parseFloat(document.getElementById('branchDistanceVariability').value) || 0.5;
+    const randomizeDistance = document.getElementById('randomizeBranchDistance').checked;
+
+    for (let side of sides) {
+    for (let i = 0; i < numBranches; i++) {
+    const angle = (i / Math.max(numBranches - 1, 1)) * Math.PI * 0.6 - Math.PI * 0.3;
+    const branchDir = perpendicular.clone().multiplyScalar(side * Math.cos(angle))
+    .add(up.clone().multiplyScalar(Math.sin(angle) * 0.3))
+    .add(startTangent.clone().multiplyScalar(0.2))
+    .normalize();
+
+    branchDir.add(new THREE.Vector3(
+    (Math.random() - 0.5) * 0.2,
+    (Math.random() - 0.5) * 0.2,
+    (Math.random() - 0.5) * 0.2
+    )).normalize();
+
+    const numBranchPoints = Math.floor(Math.random() * 3) + 3;
+    let branchPoints = [startPoint.clone()];
+    let currentPos = startPoint.clone();
+
+    for (let j = 1; j < numBranchPoints; j++) {
+    let segmentLength = baseBranchDistance;
+
+    if (randomizeDistance) {
+    const variation = (Math.random() - 0.5) * 2 * distanceVariability;
+    segmentLength += variation;
+    }
+
+    segmentLength = Math.max(0.5, segmentLength);
+
+    const perturbation = new THREE.Vector3(
+    (Math.random() - 0.5) * 0.8,
+    (Math.random() - 0.5) * 0.8,
+    (Math.random() - 0.5) * 0.8
+    );
+    currentPos = currentPos.clone().add(
+    branchDir.clone().multiplyScalar(segmentLength).add(perturbation)
+    );
+    branchPoints.push(currentPos.clone());
+    }
+
+    const mainBranch = addBranch(branchPoints);
+    // Store parent info
+    mainBranch.parentBranch = parentBranchIndex;
+    mainBranch.parentNodeIndex = parentNodeIndex;
+    generatedBranches.push(mainBranch);
+
+    if (numSubBranches > 0 && branchPoints.length > 2) {
+    for (let k = 0; k < numSubBranches; k++) {
+    const subBranchIndex = Math.floor(Math.random() * (branchPoints.length - 2)) + 1;
+    const subStartPoint = branchPoints[subBranchIndex];
+
+    const mainCurve = new THREE.CatmullRomCurve3(branchPoints, false, 'catmullrom', 0.5);
+    const t = subBranchIndex / (branchPoints.length - 1);
+    const mainTangent = mainCurve.getTangentAt(t).normalize();
+
+    let subPerpendicular = mainTangent.clone().cross(up).normalize();
+    if (subPerpendicular.lengthSq() === 0) {
+    subPerpendicular = new THREE.Vector3(1, 0, 0).cross(mainTangent).normalize();
+    }
+
+    const subSide = (k % 2 === 0) ? 1 : -1;
+    const subBranchDir = subPerpendicular.clone().multiplyScalar(subSide)
+    .add(up.clone().multiplyScalar((Math.random() - 0.5) * 0.4))
+    .add(mainTangent.clone().multiplyScalar(0.1))
+    .normalize();
+
+    const numSubPoints = Math.floor(Math.random() * 2) + 2;
+    let subBranchPoints = [subStartPoint.clone()];
+    let subCurrentPos = subStartPoint.clone();
+
+    for (let l = 1; l < numSubPoints; l++) {
+    let subSegmentLength = baseBranchDistance * 0.6;
+
+    if (randomizeDistance) {
+    const subVariation = (Math.random() - 0.5) * 2 * distanceVariability * 0.6;
+    subSegmentLength += subVariation;
+    }
+
+    subSegmentLength = Math.max(0.3, subSegmentLength);
+
+    const subPerturbation = new THREE.Vector3(
+    (Math.random() - 0.5) * 0.5,
+    (Math.random() - 0.5) * 0.5,
+    (Math.random() - 0.5) * 0.5
+    );
+    subCurrentPos = subCurrentPos.clone().add(
+    subBranchDir.clone().multiplyScalar(subSegmentLength).add(subPerturbation)
+    );
+    subBranchPoints.push(subCurrentPos.clone());
+    }
+
+    const subBranch = addBranch(subBranchPoints);
+    // Store parent info for sub-branches (they branch from the main branch we just created)
+    const mainBranchIndex = branches.length + generatedBranches.length - 1;
+    subBranch.parentBranch = mainBranchIndex;
+    subBranch.parentNodeIndex = subBranchIndex;
+    generatedBranches.push(subBranch);
+    }
+    }
+    }
+    }
+
+    return generatedBranches;
+    }
+
+    // Initialize saved shapes
+    loadSavedShapes();
+
+    // Initial cave
+    const initialPoints = [
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(2, 1, 3),
+    new THREE.Vector3(4, -2, 1),
+    new THREE.Vector3(6, 0, -2),
+    new THREE.Vector3(8, 3, 0)
+    ];
+    branches.push(addBranch(initialPoints, false));
+    rebuildCaps();
+
+    // Drag controls for all spheres
+    let allSpheres = branches.flatMap(b => b.spheres);
+    const dragControls = new DragControls(allSpheres, camera, renderer.domElement);
+    dragControls.addEventListener('drag', () => {
+    for (let i = 0; i < branches.length; i++) {
+    const branch = branches[i];
+    branch.points = branch.spheres.map(s => s.position.clone());
+    updateBranch(i);
+    }
+    rebuildCaps();
+    });
+    dragControls.addEventListener('dragstart', () => orbitControls.enabled = false);
+    dragControls.addEventListener('dragend', () => orbitControls.enabled = true);
+
+    // Selection on click
+    function onMouseClick(event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(allSpheres);
+    if (intersects.length > 0) {
+    if (selectedSphere) {
+    selectedSphere.material.color.set(0xff0000);
+    }
+    selectedSphere = intersects[0].object;
+    selectedSphere.material.color.set(0x00ff00);
+    for (let i = 0; i < branches.length; i++) {
+    const idx = branches[i].spheres.indexOf(selectedSphere);
+    if (idx !== -1) {
+    selectedBranchIndex = i;
+    selectedPointIndex3D = idx;
+    document.getElementById('nodeRadius').value = branches[i].radii[idx].toFixed(1);
+    document.getElementById('branchTension').value = branches[i].tension.toFixed(1);
+    break;
+    }
+    }
+    }
+    }
+    window.addEventListener('click', onMouseClick);
+
+    // Realtime radius update
+    document.getElementById('nodeRadius').addEventListener('input', (event) => {
+    if (selectedBranchIndex === -1) return;
+    const value = parseFloat(event.target.value);
+    if (isNaN(value) || value < 0.1) return;
+    branches[selectedBranchIndex].radii[selectedPointIndex3D] = value;
+    updateBranch(selectedBranchIndex);
+    rebuildCaps();
+    });
+
+    // Realtime tension update
+    document.getElementById('branchTension').addEventListener('input', (event) => {
+    if (selectedBranchIndex === -1) return;
+    let value = parseFloat(event.target.value);
+    if (isNaN(value)) return;
+    value = Math.min(Math.max(value, 0), 1);
+    branches[selectedBranchIndex].tension = value;
+    updateBranch(selectedBranchIndex);
+    rebuildCaps();
+    });
+
+    // Add point after selected
+    document.getElementById('addPointBtn').addEventListener('click', () => {
+    if (selectedBranchIndex === -1 || selectedPointIndex3D === -1) {
+    alert('Select a control point first.');
+    return;
+    }
+    const branch = branches[selectedBranchIndex];
+    const nextIndex = selectedPointIndex3D + 1;
+    const prevPoint = branch.points[selectedPointIndex3D];
+    const nextPoint = branch.points[nextIndex] || prevPoint.clone().add(new THREE.Vector3(1, 0, 0));
+    const midPoint = prevPoint.clone().lerp(nextPoint, 0.5);
+    const midRadius = (branch.radii[selectedPointIndex3D] + (branch.radii[nextIndex] || branch.radii[selectedPointIndex3D])) / 2;
+    branch.points.splice(nextIndex, 0, midPoint);
+    branch.radii.splice(nextIndex, 0, midRadius);
+
+    const newSphere = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }));
+    newSphere.position.copy(midPoint);
+    scene.add(newSphere);
+    branch.spheres.splice(nextIndex, 0, newSphere);
+
+    updateBranch(selectedBranchIndex);
+    allSpheres = branches.flatMap(b => b.spheres);
+    dragControls.objects = allSpheres;
+    rebuildCaps();
+    });
+
+    // Add branch from selected
+    document.getElementById('addBranchBtn').addEventListener('click', () => {
+    if (selectedBranchIndex === -1 || selectedPointIndex3D === -1) {
+    alert('Select a splitting point first.');
+    return;
+    }
+    const branch = branches[selectedBranchIndex];
+    const curve = new THREE.CatmullRomCurve3(branch.points, false, 'catmullrom', branch.tension);
+    const startPoint = branch.points[selectedPointIndex3D].clone();
+    const t = selectedPointIndex3D / (branch.points.length - 1);
+    const startTangent = curve.getTangentAt(t).normalize();
+
+    const newBranches = generateBilateralBranches(startPoint, startTangent, 1, 0, false, selectedBranchIndex, selectedPointIndex3D);
+    branches.push(...newBranches);
+
+    allSpheres = branches.flatMap(b => b.spheres);
+    dragControls.objects = allSpheres;
+    rebuildCaps();
+    });
+
+    // Random cave system generation
+    document.getElementById('randomBtn').addEventListener('click', () => {
+    const numMainBranches = parseInt(document.getElementById('numBranches').value) || 3;
+    const numSubBranches = parseInt(document.getElementById('numSubBranches').value) || 2;
+    const bilateralBranching = document.getElementById('bilateralBranching').checked;
+
+    branches.forEach(b => {
+    scene.remove(b.mesh);
+    scene.remove(b.line);
+    b.spheres.forEach(s => scene.remove(s));
+    });
+    caps.forEach(c => scene.remove(c));
+    caps = [];
+    branches = [];
+    selectedSphere = null;
+    selectedBranchIndex = -1;
+    selectedPointIndex3D = -1;
+
+    const numMainPoints = Math.floor(Math.random() * 4) + 6;
+    let mainPoints = [];
+    let currentPos = new THREE.Vector3(0, 0, 0);
+    mainPoints.push(currentPos.clone());
+
+    const baseBranchDistance = parseFloat(document.getElementById('branchDistance').value) || 3.0;
+    const distanceVariability = parseFloat(document.getElementById('branchDistanceVariability').value) || 0.5;
+    const randomizeDistance = document.getElementById('randomizeBranchDistance').checked;
+
+    for (let i = 1; i < numMainPoints; i++) {
+    const direction = new THREE.Vector3(1, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3).normalize();
+
+    let segmentLength = baseBranchDistance;
+
+    if (randomizeDistance) {
+    const variation = (Math.random() - 0.5) * 2 * distanceVariability;
+    segmentLength += variation;
+    }
+
+    segmentLength = Math.max(0.5, segmentLength);
+
+    currentPos = currentPos.clone().add(direction.multiplyScalar(segmentLength));
+    mainPoints.push(currentPos.clone());
+    }
+
+    const mainBranch = addBranch(mainPoints);
+    branches.push(mainBranch);
+
+    const numBranchingPoints = Math.min(Math.floor(numMainBranches / (bilateralBranching ? 2 : 1)) + 1, mainPoints.length - 2);
+
+    for (let i = 0; i < numBranchingPoints; i++) {
+    const branchPointIndex = Math.floor((i + 1) * (mainPoints.length - 2) / (numBranchingPoints + 1)) + 1;
+    const branchPoint = mainPoints[branchPointIndex];
+
+    const curve = new THREE.CatmullRomCurve3(mainPoints, false, 'catmullrom', 0.5);
+    const t = branchPointIndex / (mainPoints.length - 1);
+    const tangent = curve.getTangentAt(t).normalize();
+
+    const branchesPerSide = Math.ceil(numMainBranches / numBranchingPoints / (bilateralBranching ? 2 : 1));
+    const newBranches = generateBilateralBranches(branchPoint, tangent, branchesPerSide, numSubBranches, bilateralBranching, 0, branchPointIndex);
+    branches.push(...newBranches);
+    }
+
+    allSpheres = branches.flatMap(b => b.spheres);
+    dragControls.objects = allSpheres;
+    rebuildCaps();
+    });
+
+    // Wireframe toggle
+    document.getElementById('wireframe').addEventListener('change', (event) => {
+    const wireframe = event.target.checked;
+    [floorMaterial, wallMaterial, roofMaterial].forEach(m => {
+    m.wireframe = wireframe;
+    m.needsUpdate = true;
+    });
+    });
+
+    // Export button
+    document.getElementById('exportBtn').addEventListener('click', () => {
+    branches.forEach(b => {
+    b.spheres.forEach(s => scene.remove(s));
+    scene.remove(b.line);
+    });
+    caps.forEach(c => scene.remove(c));
+
+    const exporter = new GLTFExporter();
+    exporter.parse(scene, (gltf) => {
+    const blob = new Blob([gltf], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'cave_system.glb';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    }, (error) => {
+    console.error('Export error:', error);
+    }, { binary: true });
+
+    branches.forEach(b => {
+    b.spheres.forEach(s => scene.add(s));
+    scene.add(b.line);
+    });
+    caps.forEach(c => scene.add(c));
+    });
+
+    // Flatten all points to horizontal plane
+    document.getElementById('flattenBtn').addEventListener('click', () => {
+    if (branches.length === 0) {
+    alert('No cave system to flatten.');
+    return;
+    }
+
+    let totalY = 0;
+    let pointCount = 0;
+
+    branches.forEach(branch => {
+    branch.points.forEach(point => {
+    totalY += point.y;
+    pointCount++;
+    });
+    });
+
+    const averageY = pointCount > 0 ? totalY / pointCount : 0;
+
+    branches.forEach((branch, branchIndex) => {
+    branch.points.forEach((point, pointIndex) => {
+    point.y = averageY;
+    branch.spheres[pointIndex].position.y = averageY;
+    });
+
+    updateBranch(branchIndex);
+    });
+
+    rebuildCaps();
+
+    allSpheres = branches.flatMap(b => b.spheres);
+    dragControls.objects = allSpheres;
+
+    alert(`Cave system flattened to horizontal plane at Y = ${averageY.toFixed(2)}`);
+    });
+
+    // CORRECTED: Align all points in each branch to a straight line along the closest axis
+    document.getElementById('alignRightAnglesBtn').addEventListener('click', () => {
+    if (branches.length === 0) {
+        alert('No cave system to align.');
+        return;
+    }
+
+    // For each branch, align all points to a straight line along the closest axis
+    branches.forEach((branch, branchIndex) => {
+        if (branch.points.length < 2) return;
+        const start = branch.points[0];
+        const end = branch.points[branch.points.length - 1];
+        const delta = end.clone().sub(start);
+        // Find the dominant axis
+        const absX = Math.abs(delta.x);
+        const absY = Math.abs(delta.y);
+        const absZ = Math.abs(delta.z);
+        let axis = 'x';
+        if (absY >= absX && absY >= absZ) axis = 'y';
+        else if (absZ >= absX && absZ >= absY) axis = 'z';
+        // For all points, set the other two axes to the start's value, and interpolate along the dominant axis
+        for (let i = 0; i < branch.points.length; i++) {
+            const t = i / (branch.points.length - 1);
+            if (axis === 'x') {
+                branch.points[i].x = start.x + (end.x - start.x) * t;
+                branch.points[i].y = start.y;
+                branch.points[i].z = start.z;
+            } else if (axis === 'y') {
+                branch.points[i].x = start.x;
+                branch.points[i].y = start.y + (end.y - start.y) * t;
+                branch.points[i].z = start.z;
+            } else {
+                branch.points[i].x = start.x;
+                branch.points[i].y = start.y;
+                branch.points[i].z = start.z + (end.z - start.z) * t;
+            }
+            branch.spheres[i].position.copy(branch.points[i]);
+        }
+        updateBranch(branchIndex);
+    });
+    rebuildCaps();
+    allSpheres = branches.flatMap(b => b.spheres);
+    dragControls.objects = allSpheres;
+    alert('All branches are now perfectly straight and aligned to the closest axis!');
+    });
+
+    // NEW: Re-align Branch Nodes - moves entire branch so its first point matches its parent node
+    document.getElementById('realignBranchNodesBtn').addEventListener('click', () => {
+    if (branches.length === 0) {
+        alert('No cave system to re-align.');
+        return;
+    }
+
+    let realignedCount = 0;
+
+    branches.forEach((branch, branchIndex) => {
+        // Skip the main/root branch (it has no parent)
+        if (branch.parentBranch === null || branch.parentBranch === undefined) return;
+        if (branch.parentBranch >= branches.length) return;
+        const parentBranch = branches[branch.parentBranch];
+        if (branch.parentNodeIndex >= parentBranch.points.length) return;
+        const parentNodePosition = parentBranch.points[branch.parentNodeIndex];
+        const branchFirstPoint = branch.points[0];
+        // Calculate offset needed to move first point to parent node
+        const offset = parentNodePosition.clone().sub(branchFirstPoint);
+        // Move all points and spheres in the branch by the offset
+        for (let i = 0; i < branch.points.length; i++) {
+            branch.points[i].add(offset);
+            branch.spheres[i].position.copy(branch.points[i]);
+        }
+        realignedCount++;
+        updateBranch(branchIndex);
+    });
+
+    rebuildCaps();
+    allSpheres = branches.flatMap(b => b.spheres);
+    dragControls.objects = allSpheres;
+    alert(`Re-aligned ${realignedCount} branch nodes and their children to their parent positions!`);
+    });
+
+    // Initialize cross-section editor
+    drawCrossSection();
+
+    // Animation loop
+    function animate() {
+    requestAnimationFrame(animate);
+    orbitControls.update();
+    renderer.render(scene, camera);
+    }
+    animate();
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// End of script
+    </script>
+</body>
+</html>
