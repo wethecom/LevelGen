@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <title>3D Cave System with Cross-Section Editor</title>
     <style>
-    body { margin: 0; font-family: Arial, sans-serif; }
+    body { margin: 0; font-family: Arial, sans-serif; overflow: hidden; }
     canvas { display: block; }
-
     #controls {
     position: absolute;
     top: 10px;
@@ -19,7 +18,6 @@
     z-index: 10;
     max-width: 220px;
     }
-
     #crossSectionEditor {
     position: absolute;
     top: 10px;
@@ -33,20 +31,17 @@
     max-height: 80vh;
     overflow-y: auto;
     }
-
     #crossSectionEditor h3 {
     margin: 0 0 10px 0;
     color: #0284c7;
     font-size: 16px;
     }
-
     .shape-buttons {
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
     margin-bottom: 10px;
     }
-
     .shape-btn {
     padding: 4px 8px;
     border: 1px solid #ccc;
@@ -56,25 +51,20 @@
     font-size: 12px;
     text-transform: capitalize;
     }
-
     .shape-btn.active {
     background: #0284c7;
     color: white;
     }
-
     .shape-btn:hover {
     background: #f0f9ff;
     }
-
     .shape-btn.active:hover {
     background: #0369a1;
     }
-
     .shape-btn.custom {
     background: #f59e0b;
     color: white;
     }
-
     #shapeCanvas {
     border: 2px solid #0284c7;
     border-radius: 4px;
@@ -82,14 +72,12 @@
     cursor: crosshair;
     margin: 10px 0;
     }
-
     .editor-controls {
     display: flex;
     gap: 5px;
     margin: 10px 0;
     flex-wrap: wrap;
     }
-
     .editor-controls button {
     padding: 4px 8px;
     border: 1px solid #ccc;
@@ -98,68 +86,56 @@
     cursor: pointer;
     font-size: 11px;
     }
-
     .editor-controls button:disabled {
     background: #f5f5f5;
     color: #999;
     cursor: not-allowed;
     }
-
     .editor-controls button.primary {
     background: #0284c7;
     color: white;
     border-color: #0284c7;
     }
-
     .editor-controls button.danger {
     background: #dc2626;
     color: white;
     border-color: #dc2626;
     }
-
     .editor-controls button.success {
     background: #16a34a;
     color: white;
     border-color: #16a34a;
     }
-
     .save-load-controls {
     display: flex;
     gap: 3px;
     margin: 5px 0;
     flex-wrap: wrap;
     }
-
     .save-load-controls button {
     padding: 3px 6px;
     font-size: 10px;
     }
-
     .save-load-controls input {
     padding: 2px 4px;
     font-size: 10px;
     width: 80px;
     }
-
-    #customTexture, #nodeRadius, #branchTension, #numBranches, #numSubBranches, #branchDistance, #branchDistanceVariability {
+    #customTexture, #nodeRadius, #branchTension, #numBranches, #numSubBranches, #branchDistance, #branchDistanceVariability, #uniformRadius {
     width: 200px;
     margin-top: 5px;
     }
-
     button {
     margin-top: 5px;
     width: 100%;
     }
-
     label {
     margin-top: 5px;
     display: block;
     }
-
     input[type=number] {
     margin-top: 3px;
     }
-
     .branch-controls {
     border: 1px solid #ccc;
     padding: 8px;
@@ -167,34 +143,63 @@
     border-radius: 3px;
     background: rgba(240, 240, 240, 0.5);
     }
-
     p {
     margin-top: 7px;
     font-size: 12px;
     color: #444;
     }
-
     .hidden {
     display: none !important;
     }
-
     .saved-shapes {
     margin: 5px 0;
     font-size: 10px;
     }
-
     .saved-shape-item {
     display: flex;
     align-items: center;
     gap: 2px;
     margin: 2px 0;
     }
-
     .saved-shape-item button {
     padding: 2px 4px;
     font-size: 9px;
     margin: 0;
     width: auto;
+    }
+    #navigationInfo {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 10;
+    }
+    .download-section {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #ccc;
+    }
+    .download-link {
+        display: inline-block;
+        width: 100%;
+        padding: 4px 8px;
+        background: #0284c7;
+        color: white;
+        border: 1px solid #0284c7;
+        border-radius: 4px;
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+        font-size: 14px;
+        margin-top: 5px;
+        box-sizing: border-box;
+    }
+    .download-link:hover {
+        background: #0369a1;
     }
     </style>
 </head>
@@ -235,6 +240,11 @@
     <label for="branchTension">Branch Tension (live):</label>
     <input type="number" id="branchTension" step="0.1" min="0" max="1" value="0.5">
     <br>
+    <div class="branch-controls">
+        <label for="uniformRadius">Set All Radii To:</label>
+        <input type="number" id="uniformRadius" step="0.1" min="0.1" value="0.5">
+        <button id="uniformRadiusBtn">Apply Uniform Radius</button>
+    </div>
 <div class="branch-controls">
   <label for="endcapFileInput">Load Endcap Mesh (.glb):</label>
   <input type="file" id="endcapFileInput" accept=".glb" />
@@ -244,8 +254,12 @@
   <label><strong>Endcap Adjustments:</strong></label>
   <label>Scale:</label>
   <input type="number" id="capScale" step="0.1" value="1" />
-  <label>Rotation (deg):</label>
-  <input type="number" id="capRotation" step="1" value="0" />
+<label>Rotation X (pitch):</label>
+<input type="number" id="capRotationX" step="1" value="0" />
+<label>Rotation Y (yaw):</label>
+<input type="number" id="capRotationY" step="1" value="0" />
+<label>Rotation Z (roll):</label>
+<input type="number" id="capRotationZ" step="1" value="0" />
   <label>X Offset:</label>
   <input type="number" id="capOffsetX" step="0.1" value="0" />
   <label>Y Offset:</label>
@@ -256,23 +270,22 @@
     <input type="checkbox" id="wireframe"> Wireframe Mode
     <p>Click a red sphere to select a control point (turns green).</p>
     <p><strong>Cross-Section:</strong> Use the editor to modify tube shape.</p>
+    
+    <div class="download-section">
+        <a id="downloadHtmlBtn" class="download-link">Download HTML File</a>
     </div>
-
+    </div>
     <div id="crossSectionEditor" class="hidden">
     <h3>Tube Cross-Section Editor</h3>
-
     <div class="shape-buttons" id="shapeButtons">
     <!-- Shape buttons will be populated by JavaScript -->
     </div>
-
     <canvas id="shapeCanvas" width="320" height="240"></canvas>
-
     <div class="editor-controls">
     <button id="addPointBtn2" class="primary">Add Point</button>
     <button id="removePointBtn" class="danger">Remove Point</button>
     <button id="applyShapeBtn" class="success">Apply to Cave</button>
     </div>
-
     <div class="save-load-controls">
     <input type="text" id="saveNameInput" placeholder="Shape name">
     <button id="saveShapeBtn" class="primary">Save</button>
@@ -280,16 +293,16 @@
     <input type="file" id="importShapeInput" accept=".json" style="display:none">
     <button id="importShapeBtn">Import</button>
     </div>
-
     <div id="savedShapes" class="saved-shapes">
     <!-- Saved shapes will be populated here -->
     </div>
-
     <div style="font-size: 11px; color: #666; margin-top: 8px;">
     Drag points to customize shape. Click edges to add points. Select a point first to add/remove.
     </div>
     </div>
-
+    <div id="navigationInfo">
+    <strong>Navigation:</strong> W/S: Forward/Back | A/D: Left/Right | Q/E: Up/Down | Mouse: Look Around
+    </div>
     <script type="importmap">
     {
     "imports": {
@@ -298,41 +311,15 @@
     }
     }
     </script>
-
     <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { DragControls } from 'three/addons/controls/DragControls.js';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
-let endcapMesh = null;
-document.getElementById('endcapFileInput').addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const loader = new GLTFLoader();
-    loader.parse(e.target.result, '', (gltf) => {
-      endcapMesh = gltf.scene;
-      alert('Endcap mesh loaded!');
-    }, console.error);
-  };
-  reader.readAsArrayBuffer(file);
-});
-document.getElementById('endcapFileInput').addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const loader = new GLTFLoader();
-    loader.parse(e.target.result, '', (gltf) => {
-      endcapMesh = gltf.scene;
-      alert('Endcap mesh loaded!');
-    }, console.error);
-  };
-  reader.readAsArrayBuffer(file);
-});
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    
+    let endcapMesh = null;
+    
     // Scene setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -340,23 +327,61 @@ document.getElementById('endcapFileInput').addEventListener('change', (event) =>
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x202020);
     document.body.appendChild(renderer.domElement);
-
+    
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(5, 5, 5);
     scene.add(directionalLight);
-
+    
     // Controls
     const orbitControls = new OrbitControls(camera, renderer.domElement);
     camera.position.set(0, 0, 20);
-
+    
+    // Navigation state
+    const moveState = {
+        forward: false,
+        backward: false,
+        left: false,
+        right: false,
+        up: false,
+        down: false
+    };
+    
+    const moveSpeed = 0.2;
+    const direction = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const moveVector = new THREE.Vector3();
+    
+    // Navigation event listeners
+    document.addEventListener('keydown', (event) => {
+        switch (event.code) {
+            case 'KeyW': moveState.forward = true; break;
+            case 'KeyS': moveState.backward = true; break;
+            case 'KeyA': moveState.left = true; break;
+            case 'KeyD': moveState.right = true; break;
+            case 'KeyQ': moveState.up = true; break;
+            case 'KeyE': moveState.down = true; break;
+        }
+    });
+    
+    document.addEventListener('keyup', (event) => {
+        switch (event.code) {
+            case 'KeyW': moveState.forward = false; break;
+            case 'KeyS': moveState.backward = false; break;
+            case 'KeyA': moveState.left = false; break;
+            case 'KeyD': moveState.right = false; break;
+            case 'KeyQ': moveState.up = false; break;
+            case 'KeyE': moveState.down = false; break;
+        }
+    });
+    
     // Materials
     const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, side: THREE.DoubleSide });
     const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x696969, side: THREE.DoubleSide });
     const roofMaterial = new THREE.MeshStandardMaterial({ color: 0x2F4F4F, side: THREE.DoubleSide });
-
+    
     // Cross-section editor variables
     let crossSectionPoints = [
     { x: 100, y: 60 },
@@ -368,7 +393,7 @@ document.getElementById('endcapFileInput').addEventListener('change', (event) =>
     let dragIndex = null;
     let currentShape = 'box';
     let savedShapes = {};
-
+    
     // Load saved shapes from localStorage
     function loadSavedShapes() {
     const saved = localStorage.getItem('caveCrossSectionShapes');
@@ -382,46 +407,41 @@ document.getElementById('endcapFileInput').addEventListener('change', (event) =>
     }
     }
     }
-
+    
     // Save shapes to localStorage
     function saveSavedShapes() {
     localStorage.setItem('caveCrossSectionShapes', JSON.stringify(savedShapes));
     }
-
+    
     // Update saved shapes UI
     function updateSavedShapesUI() {
     const container = document.getElementById('savedShapes');
     container.innerHTML = '';
-
     if (Object.keys(savedShapes).length > 0) {
     const title = document.createElement('div');
     title.textContent = 'Saved Shapes:';
     title.style.fontWeight = 'bold';
     title.style.marginBottom = '3px';
     container.appendChild(title);
-
     Object.keys(savedShapes).forEach(shapeName => {
     const item = document.createElement('div');
     item.className = 'saved-shape-item';
-
     const loadBtn = document.createElement('button');
     loadBtn.textContent = shapeName;
     loadBtn.className = currentShape === shapeName ? 'shape-btn active' : 'shape-btn';
     loadBtn.addEventListener('click', () => loadShape(shapeName));
-
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = '×';
     deleteBtn.className = 'danger';
     deleteBtn.title = 'Delete shape';
     deleteBtn.addEventListener('click', () => deleteShape(shapeName));
-
     item.appendChild(loadBtn);
     item.appendChild(deleteBtn);
     container.appendChild(item);
     });
     }
     }
-
+    
     // Predefined shapes for cross-section
     const SHAPES = {
     box: [
@@ -480,26 +500,25 @@ arch: [
     return points;
     })()
     };
-
+    
     // Cave system variables
     let branches = [];
     let caps = [];
     let selectedSphere = null;
     let selectedBranchIndex = -1;
     let selectedPointIndex3D = -1;
-
     const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false });
     const selectedSphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, depthTest: false });
-
+    
     // Raycaster for selection
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-
+    
     // Cross-section editor setup
     const canvas = document.getElementById('shapeCanvas');
     const ctx = canvas.getContext('2d');
     const shapeButtonsContainer = document.getElementById('shapeButtons');
-
+    
     // Create shape buttons
     Object.keys(SHAPES).forEach(shapeName => {
     const button = document.createElement('button');
@@ -509,7 +528,7 @@ arch: [
     button.addEventListener('click', () => loadShape(shapeName));
     shapeButtonsContainer.appendChild(button);
     });
-
+    
     // Cross-section editor functions
     function loadShape(shapeName) {
     if (SHAPES[shapeName]) {
@@ -524,20 +543,18 @@ arch: [
     updateSavedShapesUI();
     drawCrossSection();
     }
-
+    
     function updateShapeButtons() {
     const existingCustomBtn = shapeButtonsContainer.querySelector('.shape-btn.custom');
     if (existingCustomBtn) {
     existingCustomBtn.remove();
     }
-
     document.querySelectorAll('.shape-btn').forEach(btn => {
     btn.classList.remove('active');
     if (btn.textContent === currentShape) {
     btn.classList.add('active');
     }
     });
-
     if (currentShape === 'custom') {
     const customBtn = document.createElement('button');
     customBtn.textContent = 'custom';
@@ -549,14 +566,12 @@ arch: [
     shapeButtonsContainer.appendChild(customBtn);
     }
     }
-
+    
     function drawCrossSection() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.fillStyle = '#e0f2fe';
     ctx.strokeStyle = '#0284c7';
     ctx.lineWidth = 2;
-
     ctx.beginPath();
     crossSectionPoints.forEach((point, i) => {
     if (i === 0) ctx.moveTo(point.x, point.y);
@@ -565,7 +580,6 @@ arch: [
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
     ctx.lineWidth = 3;
     crossSectionPoints.forEach((point, i) => {
     const nextPoint = crossSectionPoints[(i + 1) % crossSectionPoints.length];
@@ -576,27 +590,24 @@ arch: [
     ctx.lineTo(nextPoint.x, nextPoint.y);
     ctx.stroke();
     });
-
     ctx.globalAlpha = 1;
     crossSectionPoints.forEach((point, i) => {
     ctx.fillStyle = selectedPointIndex === i ? '#f59e42' : '#0284c7';
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;
     const radius = selectedPointIndex === i ? 9 : 7;
-
     ctx.beginPath();
     ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
     ctx.fill();
     ctx.stroke();
     });
     }
-
+    
     // Cross-section editor event handlers
     canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
     for (let i = 0; i < crossSectionPoints.length; i++) {
     const point = crossSectionPoints[i];
     const distance = Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2);
@@ -607,44 +618,38 @@ arch: [
     return;
     }
     }
-
     for (let i = 0; i < crossSectionPoints.length; i++) {
     const point1 = crossSectionPoints[i];
     const point2 = crossSectionPoints[(i + 1) % crossSectionPoints.length];
-
     const A = y - point1.y;
     const B = point1.x - x;
     const C = (x - point1.x) * (point2.y - point1.y) - (y - point1.y) * (point2.x - point1.x);
     const distance = Math.abs(C) / Math.sqrt(A * A + B * B);
-
     if (distance <= 5) {
     selectedPointIndex = i;
     drawCrossSection();
     return;
     }
     }
-
     selectedPointIndex = null;
     drawCrossSection();
     });
-
+    
     canvas.addEventListener('mousemove', (e) => {
     if (dragIndex === null) return;
-
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
     crossSectionPoints[dragIndex] = { x, y };
     currentShape = 'custom';
     updateShapeButtons();
     drawCrossSection();
     });
-
+    
     canvas.addEventListener('mouseup', () => {
     dragIndex = null;
     });
-
+    
     // Cross-section save/load functions
     function saveShape() {
     const name = document.getElementById('saveNameInput').value.trim();
@@ -652,7 +657,6 @@ arch: [
     alert('Please enter a shape name');
     return;
     }
-
     savedShapes[name] = [...crossSectionPoints];
     currentShape = name;
     saveSavedShapes();
@@ -660,7 +664,7 @@ arch: [
     updateShapeButtons();
     document.getElementById('saveNameInput').value = '';
     }
-
+    
     function deleteShape(shapeName) {
     if (confirm(`Delete shape "${shapeName}"?`)) {
     delete savedShapes[shapeName];
@@ -671,7 +675,7 @@ arch: [
     }
     }
     }
-
+    
     function exportShape() {
     const data = {
     name: currentShape,
@@ -686,11 +690,10 @@ arch: [
     a.click();
     URL.revokeObjectURL(url);
     }
-
+    
     function importShape(event) {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
     try {
@@ -711,11 +714,10 @@ arch: [
     reader.readAsText(file);
     event.target.value = '';
     }
-
+    
     // Cross-section editor controls
     document.getElementById('addPointBtn2').addEventListener('click', () => {
     if (selectedPointIndex === null) return;
-
     const nextIndex = (selectedPointIndex + 1) % crossSectionPoints.length;
     const point1 = crossSectionPoints[selectedPointIndex];
     const point2 = crossSectionPoints[nextIndex];
@@ -723,24 +725,22 @@ arch: [
     x: (point1.x + point2.x) / 2,
     y: (point1.y + point2.y) / 2
     };
-
     crossSectionPoints.splice(nextIndex, 0, midPoint);
     selectedPointIndex = nextIndex;
     currentShape = 'custom';
     updateShapeButtons();
     drawCrossSection();
     });
-
+    
     document.getElementById('removePointBtn').addEventListener('click', () => {
     if (selectedPointIndex === null || crossSectionPoints.length <= 3) return;
-
     crossSectionPoints.splice(selectedPointIndex, 1);
     selectedPointIndex = null;
     currentShape = 'custom';
     updateShapeButtons();
     drawCrossSection();
     });
-
+    
     // Save/load/export/import controls
     document.getElementById('saveShapeBtn').addEventListener('click', saveShape);
     document.getElementById('exportShapeBtn').addEventListener('click', exportShape);
@@ -748,39 +748,35 @@ arch: [
     document.getElementById('importShapeInput').click();
     });
     document.getElementById('importShapeInput').addEventListener('change', importShape);
-
+    
     // Convert 2D cross-section to 3D shape data
     function convertCrossSectionTo3D() {
     const centerX = crossSectionPoints.reduce((sum, p) => sum + p.x, 0) / crossSectionPoints.length;
     const centerY = crossSectionPoints.reduce((sum, p) => sum + p.y, 0) / crossSectionPoints.length;
-
     const normalizedPoints = crossSectionPoints.map(p => ({
     x: (p.x - centerX) / 100,
     y: -(p.y - centerY) / 100
     }));
-
     return normalizedPoints;
     }
-
+    
     // Apply cross-section to cave system
     document.getElementById('applyShapeBtn').addEventListener('click', () => {
     const shapeData = convertCrossSectionTo3D();
-
     branches.forEach((branch, index) => {
     branch.crossSection = shapeData;
     updateBranch(index);
     });
-
     rebuildCaps();
     alert('Cross-section applied to all cave tunnels!');
     });
-
+    
     // Toggle editor visibility
     document.getElementById('toggleEditor').addEventListener('click', () => {
     const editor = document.getElementById('crossSectionEditor');
     editor.classList.toggle('hidden');
     });
-
+    
     // 1D Catmull-Rom interpolation for smooth radius
     function catmullRomInterp(t, p0, p1, p2, p3) {
     const v0 = (p2 - p0) * 0.5;
@@ -789,7 +785,7 @@ arch: [
     const t3 = t * t2;
     return (2 * p1 - 2 * p2 + v0 + v1) * t3 + (-3 * p1 + 3 * p2 - 2 * v0 - v1) * t2 + v0 * t + p1;
     }
-
+    
     // Function to get radius at t with smooth interpolation
     function getRadiusAt(branch, t) {
     const len = branch.points.length - 1;
@@ -803,32 +799,26 @@ arch: [
     const p3 = branch.radii[Math.min(floorIndex + 2, len)];
     return catmullRomInterp(frac, p0, p1, p2, p3);
     }
-
+    
     // Function to create a custom tube mesh with variable radius and custom cross-section
     function createTubeMesh(branch) {
     const curve = new THREE.CatmullRomCurve3(branch.points, false, 'catmullrom', branch.tension);
     const numSegments = 100;
     const pathPoints = curve.getPoints(numSegments);
     const tangents = [];
-
     for (let i = 0; i <= numSegments; i++) {
     tangents.push(curve.getTangent(i / numSegments).normalize());
     }
-
     const crossSection = branch.crossSection || [
     { x: 1, y: 0 }, { x: 0.7, y: 0.7 }, { x: 0, y: 1 }, { x: -0.7, y: 0.7 },
     { x: -1, y: 0 }, { x: -0.7, y: -0.7 }, { x: 0, y: -1 }, { x: 0.7, y: -0.7 }
     ];
-
     const numRadial = crossSection.length;
-
     let normals = new Array(numSegments + 1);
     let binormals = new Array(numSegments + 1);
-
     normals[0] = new THREE.Vector3(0, 1, 0).cross(tangents[0]).normalize();
     if (normals[0].lengthSq() === 0) normals[0] = new THREE.Vector3(1, 0, 0).cross(tangents[0]).normalize();
     binormals[0] = tangents[0].clone().cross(normals[0]).normalize();
-
     for (let i = 1; i <= numSegments; i++) {
     const cross = tangents[i - 1].clone().cross(tangents[i]);
     if (cross.lengthSq() < 1e-8) {
@@ -840,25 +830,21 @@ arch: [
     }
     binormals[i] = tangents[i].clone().cross(normals[i]).normalize();
     }
-
     const vertices = [];
     const indices = [];
     const uvs = [];
-
     for (let i = 0; i <= numSegments; i++) {
     const radius = getRadiusAt(branch, i / numSegments);
     for (let j = 0; j < numRadial; j++) {
     const crossPoint = crossSection[j];
     const localX = crossPoint.x * radius;
     const localY = crossPoint.y * radius;
-
     const normal = normals[i].clone().multiplyScalar(localX).add(binormals[i].clone().multiplyScalar(localY));
     const vertex = pathPoints[i].clone().add(normal);
     vertices.push(vertex.x, vertex.y, vertex.z);
     uvs.push(j / numRadial, i / numSegments);
     }
     }
-
     for (let i = 0; i < numSegments; i++) {
     for (let j = 0; j < numRadial; j++) {
     const a = i * numRadial + j;
@@ -869,18 +855,15 @@ arch: [
     indices.push(b, c, d);
     }
     }
-
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
-
     let startIndex = 0;
     for (let i = 0; i < numSegments; i++) {
     for (let j = 0; j < numRadial; j++) {
     const crossPoint1 = crossSection[j];
     const crossPoint2 = crossSection[(j + 1) % numRadial];
-
     const avgY = (crossPoint1.y + crossPoint2.y) / 2;
     let materialIndex;
     if (avgY < -0.3) {
@@ -894,11 +877,10 @@ arch: [
     startIndex += 6;
     }
     }
-
     geometry.computeVertexNormals();
     return new THREE.Mesh(geometry, [floorMaterial, wallMaterial, roofMaterial]);
     }
-
+    
     // Function to create spline line
     function createSplineLine(branch) {
     const curve = new THREE.CatmullRomCurve3(branch.points, false, 'catmullrom', branch.tension);
@@ -907,7 +889,7 @@ arch: [
     const lineMat = new THREE.LineBasicMaterial({ color: 0xff0000 });
     return new THREE.Line(lineGeo, lineMat);
     }
-
+    
     // Function to add a branch
     function addBranch(points, randomize = true) {
     const radii = new Array(points.length).fill(0.5);
@@ -935,7 +917,7 @@ arch: [
     const branch = {points, radii, tension, crossSection, mesh, spheres, line, parentBranch: null, parentNodeIndex: null};
     return branch;
     }
-
+    
     // Update a specific branch
     function updateBranch(index) {
     const branch = branches[index];
@@ -946,73 +928,73 @@ arch: [
     scene.add(branch.mesh);
     scene.add(branch.line);
     }
-
+    
     // Function to rebuild caps with optional custom GLB mesh
-function rebuildCaps() {
-  caps.forEach(c => scene.remove(c));
-  caps = [];
-  const pointCounts = new Map();
-
-  for (let branch of branches) {
-    const startKey = `${branch.points[0].x.toFixed(6)},${branch.points[0].y.toFixed(6)},${branch.points[0].z.toFixed(6)}`;
-    const endKey = `${branch.points[branch.points.length - 1].x.toFixed(6)},${branch.points[branch.points.length - 1].y.toFixed(6)},${branch.points[branch.points.length - 1].z.toFixed(6)}`;
-    pointCounts.set(startKey, (pointCounts.get(startKey) || 0) + 1);
-    pointCounts.set(endKey, (pointCounts.get(endKey) || 0) + 1);
-  }
-
-  for (let branch of branches) {
-    const curve = new THREE.CatmullRomCurve3(branch.points, false, 'catmullrom', branch.tension);
-    const startPoint = branch.points[0];
-    const endPoint = branch.points[branch.points.length - 1];
-    const startKey = `${startPoint.x.toFixed(6)},${startPoint.y.toFixed(6)},${startPoint.z.toFixed(6)}`;
-    const endKey = `${endPoint.x.toFixed(6)},${endPoint.y.toFixed(6)},${endPoint.z.toFixed(6)}`;
-
-    if (pointCounts.get(startKey) === 1) {
-      let tangent = curve.getTangent(0).normalize();
-
-      if (endcapMesh) {
-  const cap = endcapMesh.clone();
-  cap.position.copy(startPoint);
-  cap.lookAt(startPoint.clone().sub(tangent));
-
-  // Apply cap adjustments
-  const scale = parseFloat(document.getElementById('capScale').value) || 1;
-  const rot = THREE.MathUtils.degToRad(parseFloat(document.getElementById('capRotation').value) || 0);
-  const offsetX = parseFloat(document.getElementById('capOffsetX').value) || 0;
-  const offsetY = parseFloat(document.getElementById('capOffsetY').value) || 0;
-  const offsetZ = parseFloat(document.getElementById('capOffsetZ').value) || 0;
-
-  cap.scale.setScalar(scale);
-  cap.rotateZ(rot);
-  cap.position.add(new THREE.Vector3(offsetX, offsetY, offsetZ));
-
-  scene.add(cap);
-  caps.push(cap);
-}
-    }
-
-    if (pointCounts.get(endKey) === 1) {
-      let tangent = curve.getTangent(1).normalize();
-
-      if (endcapMesh) {
-        const cap = endcapMesh.clone();
-        cap.position.copy(endPoint);
-        cap.lookAt(endPoint.clone().add(tangent));
-        scene.add(cap);
-        caps.push(cap);
-      } else {
-        const radius = getRadiusAt(branch, 1);
-        const circleGeo = new THREE.CircleGeometry(radius, 20);
-        const endCap = new THREE.Mesh(circleGeo, wallMaterial);
-        endCap.position.copy(endPoint);
-        endCap.lookAt(endPoint.clone().add(tangent));
-        scene.add(endCap);
-        caps.push(endCap);
+    function rebuildCaps() {
+      caps.forEach(c => scene.remove(c));
+      caps = [];
+      const pointCounts = new Map();
+      for (let branch of branches) {
+        const startKey = `${branch.points[0].x.toFixed(6)},${branch.points[0].y.toFixed(6)},${branch.points[0].z.toFixed(6)}`;
+        const endKey = `${branch.points[branch.points.length - 1].x.toFixed(6)},${branch.points[branch.points.length - 1].y.toFixed(6)},${branch.points[branch.points.length - 1].z.toFixed(6)}`;
+        pointCounts.set(startKey, (pointCounts.get(startKey) || 0) + 1);
+        pointCounts.set(endKey, (pointCounts.get(endKey) || 0) + 1);
+      }
+      for (let branch of branches) {
+        const curve = new THREE.CatmullRomCurve3(branch.points, false, 'catmullrom', branch.tension);
+        const startPoint = branch.points[0];
+        const endPoint = branch.points[branch.points.length - 1];
+        const startKey = `${startPoint.x.toFixed(6)},${startPoint.y.toFixed(6)},${startPoint.z.toFixed(6)}`;
+        const endKey = `${endPoint.x.toFixed(6)},${endPoint.y.toFixed(6)},${endPoint.z.toFixed(6)}`;
+        if (pointCounts.get(startKey) === 1) {
+          let tangent = curve.getTangent(0).normalize();
+          if (endcapMesh) {
+            const cap = endcapMesh.clone();
+            cap.position.copy(startPoint);
+            cap.lookAt(startPoint.clone().sub(tangent));
+            // Apply transforms
+            const scale = parseFloat(document.getElementById('capScale').value) || 1;
+            const rotX = THREE.MathUtils.degToRad(parseFloat(document.getElementById('capRotationX').value) || 0);
+            const rotY = THREE.MathUtils.degToRad(parseFloat(document.getElementById('capRotationY').value) || 0);
+            const rotZ = THREE.MathUtils.degToRad(parseFloat(document.getElementById('capRotationZ').value) || 0);
+            const offsetX = parseFloat(document.getElementById('capOffsetX').value) || 0;
+            const offsetY = parseFloat(document.getElementById('capOffsetY').value) || 0;
+            const offsetZ = parseFloat(document.getElementById('capOffsetZ').value) || 0;
+            cap.scale.setScalar(scale);
+            cap.rotation.x += rotX;
+            cap.rotation.y += rotY;
+            cap.rotation.z += rotZ;
+            cap.position.add(new THREE.Vector3(offsetX, offsetY, offsetZ));
+            scene.add(cap);
+            caps.push(cap);
+          }
+        }
+        if (pointCounts.get(endKey) === 1) {
+          let tangent = curve.getTangent(1).normalize();
+          if (endcapMesh) {
+            const cap = endcapMesh.clone();
+            cap.position.copy(endPoint);
+            cap.lookAt(endPoint.clone().add(tangent));
+            const scale = parseFloat(document.getElementById('capScale').value) || 1;
+            const rotX = THREE.MathUtils.degToRad(parseFloat(document.getElementById('capRotationX').value) || 0);
+            const rotY = THREE.MathUtils.degToRad(parseFloat(document.getElementById('capRotationY').value) || 0);
+            const rotZ = THREE.MathUtils.degToRad(parseFloat(document.getElementById('capRotationZ').value) || 0);
+            const offsetX = parseFloat(document.getElementById('capOffsetX').value) || 0;
+            const offsetY = parseFloat(document.getElementById('capOffsetY').value) || 0;
+            const offsetZ = parseFloat(document.getElementById('capOffsetZ').value) || 0;
+            cap.scale.setScalar(scale);
+            // Invert rotation as needed for the opposite direction
+            cap.rotation.x += -rotX;
+            cap.rotation.y += -rotY;
+            cap.rotation.z += -rotZ;
+            cap.position.add(new THREE.Vector3(-offsetX, offsetY, -offsetZ));
+            scene.add(cap);
+            caps.push(cap);
+          }
+        }
       }
     }
-  }
-}
-
+    
     // Function to generate bilateral branches from a point
     function generateBilateralBranches(startPoint, startTangent, numBranches, numSubBranches, bilateral = true, parentBranchIndex = null, parentNodeIndex = null) {
     const generatedBranches = [];
@@ -1021,13 +1003,10 @@ function rebuildCaps() {
     if (perpendicular.lengthSq() === 0) {
     perpendicular = new THREE.Vector3(1, 0, 0).cross(startTangent).normalize();
     }
-
     const sides = bilateral ? [-1, 1] : [1];
-
     const baseBranchDistance = parseFloat(document.getElementById('branchDistance').value) || 3.0;
     const distanceVariability = parseFloat(document.getElementById('branchDistanceVariability').value) || 0.5;
     const randomizeDistance = document.getElementById('randomizeBranchDistance').checked;
-
     for (let side of sides) {
     for (let i = 0; i < numBranches; i++) {
     const angle = (i / Math.max(numBranches - 1, 1)) * Math.PI * 0.6 - Math.PI * 0.3;
@@ -1035,27 +1014,21 @@ function rebuildCaps() {
     .add(up.clone().multiplyScalar(Math.sin(angle) * 0.3))
     .add(startTangent.clone().multiplyScalar(0.2))
     .normalize();
-
     branchDir.add(new THREE.Vector3(
     (Math.random() - 0.5) * 0.2,
     (Math.random() - 0.5) * 0.2,
     (Math.random() - 0.5) * 0.2
     )).normalize();
-
     const numBranchPoints = Math.floor(Math.random() * 3) + 3;
     let branchPoints = [startPoint.clone()];
     let currentPos = startPoint.clone();
-
     for (let j = 1; j < numBranchPoints; j++) {
     let segmentLength = baseBranchDistance;
-
     if (randomizeDistance) {
     const variation = (Math.random() - 0.5) * 2 * distanceVariability;
     segmentLength += variation;
     }
-
     segmentLength = Math.max(0.5, segmentLength);
-
     const perturbation = new THREE.Vector3(
     (Math.random() - 0.5) * 0.8,
     (Math.random() - 0.5) * 0.8,
@@ -1066,47 +1039,37 @@ function rebuildCaps() {
     );
     branchPoints.push(currentPos.clone());
     }
-
     const mainBranch = addBranch(branchPoints);
     // Store parent info
     mainBranch.parentBranch = parentBranchIndex;
     mainBranch.parentNodeIndex = parentNodeIndex;
     generatedBranches.push(mainBranch);
-
     if (numSubBranches > 0 && branchPoints.length > 2) {
     for (let k = 0; k < numSubBranches; k++) {
     const subBranchIndex = Math.floor(Math.random() * (branchPoints.length - 2)) + 1;
     const subStartPoint = branchPoints[subBranchIndex];
-
     const mainCurve = new THREE.CatmullRomCurve3(branchPoints, false, 'catmullrom', 0.5);
     const t = subBranchIndex / (branchPoints.length - 1);
     const mainTangent = mainCurve.getTangentAt(t).normalize();
-
     let subPerpendicular = mainTangent.clone().cross(up).normalize();
     if (subPerpendicular.lengthSq() === 0) {
     subPerpendicular = new THREE.Vector3(1, 0, 0).cross(mainTangent).normalize();
     }
-
     const subSide = (k % 2 === 0) ? 1 : -1;
     const subBranchDir = subPerpendicular.clone().multiplyScalar(subSide)
     .add(up.clone().multiplyScalar((Math.random() - 0.5) * 0.4))
     .add(mainTangent.clone().multiplyScalar(0.1))
     .normalize();
-
     const numSubPoints = Math.floor(Math.random() * 2) + 2;
     let subBranchPoints = [subStartPoint.clone()];
     let subCurrentPos = subStartPoint.clone();
-
     for (let l = 1; l < numSubPoints; l++) {
     let subSegmentLength = baseBranchDistance * 0.6;
-
     if (randomizeDistance) {
     const subVariation = (Math.random() - 0.5) * 2 * distanceVariability * 0.6;
     subSegmentLength += subVariation;
     }
-
     subSegmentLength = Math.max(0.3, subSegmentLength);
-
     const subPerturbation = new THREE.Vector3(
     (Math.random() - 0.5) * 0.5,
     (Math.random() - 0.5) * 0.5,
@@ -1117,7 +1080,6 @@ function rebuildCaps() {
     );
     subBranchPoints.push(subCurrentPos.clone());
     }
-
     const subBranch = addBranch(subBranchPoints);
     // Store parent info for sub-branches (they branch from the main branch we just created)
     const mainBranchIndex = branches.length + generatedBranches.length - 1;
@@ -1128,13 +1090,12 @@ function rebuildCaps() {
     }
     }
     }
-
     return generatedBranches;
     }
-
+    
     // Initialize saved shapes
     loadSavedShapes();
-
+    
     // Initial cave
     const initialPoints = [
     new THREE.Vector3(0, 0, 0),
@@ -1145,7 +1106,7 @@ function rebuildCaps() {
     ];
     branches.push(addBranch(initialPoints, false));
     rebuildCaps();
-
+    
     // Drag controls for all spheres
     let allSpheres = branches.flatMap(b => b.spheres);
     const dragControls = new DragControls(allSpheres, camera, renderer.domElement);
@@ -1159,7 +1120,7 @@ function rebuildCaps() {
     });
     dragControls.addEventListener('dragstart', () => orbitControls.enabled = false);
     dragControls.addEventListener('dragend', () => orbitControls.enabled = true);
-
+    
     // Selection on click
     function onMouseClick(event) {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -1178,14 +1139,13 @@ function rebuildCaps() {
     selectedBranchIndex = i;
     selectedPointIndex3D = idx;
     document.getElementById('nodeRadius').value = branches[i].radii[idx].toFixed(1);
-    document.getElementById('branchTension').value = branches[i].tension.toFixed(1);
     break;
     }
     }
     }
     }
     window.addEventListener('click', onMouseClick);
-
+    
     // Realtime radius update
     document.getElementById('nodeRadius').addEventListener('input', (event) => {
     if (selectedBranchIndex === -1) return;
@@ -1195,7 +1155,7 @@ function rebuildCaps() {
     updateBranch(selectedBranchIndex);
     rebuildCaps();
     });
-
+    
     // Realtime tension update
     document.getElementById('branchTension').addEventListener('input', (event) => {
     if (selectedBranchIndex === -1) return;
@@ -1206,7 +1166,34 @@ function rebuildCaps() {
     updateBranch(selectedBranchIndex);
     rebuildCaps();
     });
-
+    
+    // Apply uniform radius to all nodes
+    document.getElementById('uniformRadiusBtn').addEventListener('click', () => {
+    const uniformRadius = parseFloat(document.getElementById('uniformRadius').value);
+    if (isNaN(uniformRadius) || uniformRadius < 0.1) {
+        alert('Please enter a valid radius (>= 0.1)');
+        return;
+    }
+    
+    let updatedCount = 0;
+    branches.forEach((branch, branchIndex) => {
+        for (let i = 0; i < branch.radii.length; i++) {
+            branch.radii[i] = uniformRadius;
+            updatedCount++;
+        }
+        updateBranch(branchIndex);
+    });
+    
+    rebuildCaps();
+    
+    // Update the node radius input if a node is selected
+    if (selectedBranchIndex !== -1 && selectedPointIndex3D !== -1) {
+        document.getElementById('nodeRadius').value = uniformRadius.toFixed(1);
+    }
+    
+    alert(`Set ${updatedCount} nodes to uniform radius of ${uniformRadius.toFixed(1)}`);
+    });
+    
     // Add point after selected
     document.getElementById('addPointBtn').addEventListener('click', () => {
     if (selectedBranchIndex === -1 || selectedPointIndex3D === -1) {
@@ -1221,18 +1208,16 @@ function rebuildCaps() {
     const midRadius = (branch.radii[selectedPointIndex3D] + (branch.radii[nextIndex] || branch.radii[selectedPointIndex3D])) / 2;
     branch.points.splice(nextIndex, 0, midPoint);
     branch.radii.splice(nextIndex, 0, midRadius);
-
     const newSphere = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }));
     newSphere.position.copy(midPoint);
     scene.add(newSphere);
     branch.spheres.splice(nextIndex, 0, newSphere);
-
     updateBranch(selectedBranchIndex);
     allSpheres = branches.flatMap(b => b.spheres);
     dragControls.objects = allSpheres;
     rebuildCaps();
     });
-
+    
     // Add branch from selected
     document.getElementById('addBranchBtn').addEventListener('click', () => {
     if (selectedBranchIndex === -1 || selectedPointIndex3D === -1) {
@@ -1244,21 +1229,18 @@ function rebuildCaps() {
     const startPoint = branch.points[selectedPointIndex3D].clone();
     const t = selectedPointIndex3D / (branch.points.length - 1);
     const startTangent = curve.getTangentAt(t).normalize();
-
     const newBranches = generateBilateralBranches(startPoint, startTangent, 1, 0, false, selectedBranchIndex, selectedPointIndex3D);
     branches.push(...newBranches);
-
     allSpheres = branches.flatMap(b => b.spheres);
     dragControls.objects = allSpheres;
     rebuildCaps();
     });
-
+    
     // Random cave system generation
     document.getElementById('randomBtn').addEventListener('click', () => {
     const numMainBranches = parseInt(document.getElementById('numBranches').value) || 3;
     const numSubBranches = parseInt(document.getElementById('numSubBranches').value) || 2;
     const bilateralBranching = document.getElementById('bilateralBranching').checked;
-
     branches.forEach(b => {
     scene.remove(b.mesh);
     scene.remove(b.line);
@@ -1270,55 +1252,42 @@ function rebuildCaps() {
     selectedSphere = null;
     selectedBranchIndex = -1;
     selectedPointIndex3D = -1;
-
     const numMainPoints = Math.floor(Math.random() * 4) + 6;
     let mainPoints = [];
     let currentPos = new THREE.Vector3(0, 0, 0);
     mainPoints.push(currentPos.clone());
-
     const baseBranchDistance = parseFloat(document.getElementById('branchDistance').value) || 3.0;
     const distanceVariability = parseFloat(document.getElementById('branchDistanceVariability').value) || 0.5;
     const randomizeDistance = document.getElementById('randomizeBranchDistance').checked;
-
     for (let i = 1; i < numMainPoints; i++) {
     const direction = new THREE.Vector3(1, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3).normalize();
-
     let segmentLength = baseBranchDistance;
-
     if (randomizeDistance) {
     const variation = (Math.random() - 0.5) * 2 * distanceVariability;
     segmentLength += variation;
     }
-
     segmentLength = Math.max(0.5, segmentLength);
-
     currentPos = currentPos.clone().add(direction.multiplyScalar(segmentLength));
     mainPoints.push(currentPos.clone());
     }
-
     const mainBranch = addBranch(mainPoints);
     branches.push(mainBranch);
-
     const numBranchingPoints = Math.min(Math.floor(numMainBranches / (bilateralBranching ? 2 : 1)) + 1, mainPoints.length - 2);
-
     for (let i = 0; i < numBranchingPoints; i++) {
     const branchPointIndex = Math.floor((i + 1) * (mainPoints.length - 2) / (numBranchingPoints + 1)) + 1;
     const branchPoint = mainPoints[branchPointIndex];
-
     const curve = new THREE.CatmullRomCurve3(mainPoints, false, 'catmullrom', 0.5);
     const t = branchPointIndex / (mainPoints.length - 1);
     const tangent = curve.getTangentAt(t).normalize();
-
     const branchesPerSide = Math.ceil(numMainBranches / numBranchingPoints / (bilateralBranching ? 2 : 1));
     const newBranches = generateBilateralBranches(branchPoint, tangent, branchesPerSide, numSubBranches, bilateralBranching, 0, branchPointIndex);
     branches.push(...newBranches);
     }
-
     allSpheres = branches.flatMap(b => b.spheres);
     dragControls.objects = allSpheres;
     rebuildCaps();
     });
-
+    
     // Wireframe toggle
     document.getElementById('wireframe').addEventListener('change', (event) => {
     const wireframe = event.target.checked;
@@ -1327,7 +1296,7 @@ function rebuildCaps() {
     m.needsUpdate = true;
     });
     });
-
+    
     // Export button
     document.getElementById('exportBtn').addEventListener('click', () => {
     branches.forEach(b => {
@@ -1335,7 +1304,6 @@ function rebuildCaps() {
     scene.remove(b.line);
     });
     caps.forEach(c => scene.remove(c));
-
     const exporter = new GLTFExporter();
     exporter.parse(scene, (gltf) => {
     const blob = new Blob([gltf], { type: 'application/octet-stream' });
@@ -1350,57 +1318,69 @@ function rebuildCaps() {
     }, (error) => {
     console.error('Export error:', error);
     }, { binary: true });
-
     branches.forEach(b => {
     b.spheres.forEach(s => scene.add(s));
     scene.add(b.line);
     });
     caps.forEach(c => scene.add(c));
     });
-
+    
+    // Download HTML button - Fixed to avoid history API issues
+    document.getElementById('downloadHtmlBtn').addEventListener('click', (event) => {
+        // Prevent default to avoid history manipulation
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Get the current page's HTML
+        const htmlContent = document.documentElement.outerHTML;
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '3d_cave_system.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // Prevent any further event handling
+        return false;
+    });
+    
     // Flatten all points to horizontal plane
     document.getElementById('flattenBtn').addEventListener('click', () => {
     if (branches.length === 0) {
     alert('No cave system to flatten.');
     return;
     }
-
     let totalY = 0;
     let pointCount = 0;
-
     branches.forEach(branch => {
     branch.points.forEach(point => {
     totalY += point.y;
     pointCount++;
     });
     });
-
     const averageY = pointCount > 0 ? totalY / pointCount : 0;
-
     branches.forEach((branch, branchIndex) => {
     branch.points.forEach((point, pointIndex) => {
     point.y = averageY;
     branch.spheres[pointIndex].position.y = averageY;
     });
-
     updateBranch(branchIndex);
     });
-
     rebuildCaps();
-
     allSpheres = branches.flatMap(b => b.spheres);
     dragControls.objects = allSpheres;
-
     alert(`Cave system flattened to horizontal plane at Y = ${averageY.toFixed(2)}`);
     });
-
+    
     // CORRECTED: Align all points in each branch to a straight line along the closest axis
     document.getElementById('alignRightAnglesBtn').addEventListener('click', () => {
     if (branches.length === 0) {
         alert('No cave system to align.');
         return;
     }
-
     // For each branch, align all points to a straight line along the closest axis
     branches.forEach((branch, branchIndex) => {
         if (branch.points.length < 2) return;
@@ -1439,16 +1419,14 @@ function rebuildCaps() {
     dragControls.objects = allSpheres;
     alert('All branches are now perfectly straight and aligned to the closest axis!');
     });
-
+    
     // NEW: Re-align Branch Nodes - moves entire branch so its first point matches its parent node
     document.getElementById('realignBranchNodesBtn').addEventListener('click', () => {
     if (branches.length === 0) {
         alert('No cave system to re-align.');
         return;
     }
-
     let realignedCount = 0;
-
     branches.forEach((branch, branchIndex) => {
         // Skip the main/root branch (it has no parent)
         if (branch.parentBranch === null || branch.parentBranch === undefined) return;
@@ -1467,32 +1445,84 @@ function rebuildCaps() {
         realignedCount++;
         updateBranch(branchIndex);
     });
-
     rebuildCaps();
     allSpheres = branches.flatMap(b => b.spheres);
     dragControls.objects = allSpheres;
     alert(`Re-aligned ${realignedCount} branch nodes and their children to their parent positions!`);
     });
-
+    
+    // Endcap file input handler
+    document.getElementById('endcapFileInput').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const loader = new GLTFLoader();
+        loader.parse(e.target.result, '', (gltf) => {
+          endcapMesh = gltf.scene;
+          alert('Endcap mesh loaded!');
+        }, console.error);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+    
+    // Apply endcaps button
+    document.getElementById('applyEndcapsBtn').addEventListener('click', () => {
+      if (!endcapMesh) {
+        alert('Please load an endcap mesh first!');
+        return;
+      }
+      rebuildCaps();
+      alert('Endcaps applied to open ends!');
+    });
+    
     // Initialize cross-section editor
     drawCrossSection();
-
-    // Animation loop
+    
+    // Animation loop with navigation
     function animate() {
     requestAnimationFrame(animate);
+    
+    // Handle WASDQE navigation
+    moveVector.set(0, 0, 0);
+    camera.getWorldDirection(direction);
+    
+    // Calculate right vector
+    right.crossVectors(direction, camera.up).normalize();
+    
+    // Apply movement based on key states
+    if (moveState.forward) moveVector.add(direction);
+    if (moveState.backward) moveVector.sub(direction);
+    if (moveState.right) moveVector.add(right);
+    if (moveState.left) moveVector.sub(right);
+    if (moveState.up) moveVector.add(camera.up);
+    if (moveState.down) moveVector.sub(camera.up);
+    
+    // Normalize and apply movement
+    if (moveVector.length() > 0) {
+        moveVector.normalize();
+        moveVector.multiplyScalar(moveSpeed);
+        camera.position.add(moveVector);
+        
+        // Update orbit controls target to maintain view direction
+        const targetDistance = 10; // Distance to maintain from camera
+        const newTarget = camera.position.clone().add(direction.clone().multiplyScalar(targetDistance));
+        orbitControls.target.copy(newTarget);
+        orbitControls.update();
+    }
+    
     orbitControls.update();
     renderer.render(scene, camera);
     }
     animate();
-
+    
     // Handle resize
     window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// End of script
+    });
+    // End of script
     </script>
 </body>
 </html>
